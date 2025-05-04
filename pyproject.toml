@@ -1,0 +1,29 @@
+[project]
+name = "pyfisheye"
+version = "0.1.0"
+description = "A Python / NumPy implementation of the omnidirectional camera model proposed by Scaramuzza et al."
+readme = "README.md"
+authors = [
+    { name = "Joseph Agrane", email = "josephagrane@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.2.5",
+    "scipy>=1.15.2",
+    "scipy-stubs>=1.15.2.2",
+]
+license = "MIT"
+license-files = ["LICENSE.md"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.10.1",
+    "mypy>=1.15.0",
+    "opencv-python-headless>=4.11.0.86",
+    "pytest>=8.3.5",
+    "ruff>=0.11.8",
+]
