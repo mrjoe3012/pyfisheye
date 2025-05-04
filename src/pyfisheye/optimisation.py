@@ -297,5 +297,5 @@ def build_inv_lookup_table(intrinsics: np.ndarray, image_radius: np.ndarray,
     rho = np.sqrt(2) * samples
     f_rho = np.polyval(intrinsics[::-1], rho)
     theta = np.acos(f_rho / np.sqrt(f_rho ** 2 + 2 * samples ** 2))
-    sorted_indices = np.argsort(theta)    
+    sorted_indices = np.argsort(theta)
     return theta[sorted_indices], rho[sorted_indices]
