@@ -274,6 +274,15 @@ wheels = [
 ]
 
 [[package]]
+name = "ndshapecheck"
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/50/37/474771450ae8a1f17a4d32ced3102828ec3ad263a4fab5d80ed98cec1ed7/ndshapecheck-0.2.2.tar.gz", hash = "sha256:352873e60997e10b6c9bc968849b73549f262f50847c2a5adbe93ca2308ca917", size = 42372 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/b5/a88cbea9d05eb78a037e8cb0ab23c8ca4205b21a46056dca1069ce282b93/ndshapecheck-0.2.2-py3-none-any.whl", hash = "sha256:b690ee55f7ba03a5ee5e44c0b4d3798cfbbd6b4deb6f3a4e0dc18f82abc3c6d0", size = 6671 },
+]
+
+[[package]]
 name = "numpy"
 version = "2.2.5"
 source = { registry = "https://pypi.org/simple" }
@@ -432,6 +441,7 @@ name = "pyfisheye"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "ndshapecheck" },
     { name = "numpy" },
     { name = "scipy" },
     { name = "scipy-stubs" },
@@ -448,6 +458,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ndshapecheck", specifier = ">=0.2.2" },
     { name = "numpy", specifier = ">=2.2.5" },
     { name = "scipy", specifier = ">=1.15.2" },
     { name = "scipy-stubs", specifier = ">=1.15.2.2" },

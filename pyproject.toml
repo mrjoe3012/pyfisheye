@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "ndshapecheck>=0.2.2",
     "numpy>=2.2.5",
     "scipy>=1.15.2",
     "scipy-stubs>=1.15.2.2",
