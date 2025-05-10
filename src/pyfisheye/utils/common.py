@@ -1,6 +1,9 @@
 import numpy as np
-from typing import Optional
+from typing import Optional, Any
 from pyfisheye.utils.check_shapes import check_shapes
+from rich.logging import RichHandler
+from functools import cache
+import logging
 
 @check_shapes({
     'distortion_centre' : '2'
@@ -115,3 +118,15 @@ def build_companion_matrix(coeffs: np.ndarray) -> np.ndarray:
     if companion.shape[0] == 1:
         companion = companion.squeeze(0)
     return companion
+
+@cache
+def get_logger() -> logging.Logger:
+    """
+    :returns: The logger for the pyfisheye library.
+    """
+    logger = logging.getLogger('pyfisheye')
+    handler = RichHandler()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger

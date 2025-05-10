@@ -9,11 +9,11 @@ from pyfisheye.utils.common import build_companion_matrix
     'scaling_matrix' : '2,2',
     'distortion_centre' : '2'
 })
-def backproject(points: np.ndarray, intrinsics: np.ndarray,
+def project(points: np.ndarray, intrinsics: np.ndarray,
             distortion_centre: np.ndarray,
             scaling_matrix: Optional[np.ndarray] = None) -> np.ndarray:
     """
-    Backproject world points to pixel coordinates. Uses batched method for computing
+    Project world points to pixel coordinates. Uses batched method for computing
         polynomial roots, but is still quite slow for large numbers of points.
     :param pixels: The pixels to project (in image coordinates.)
     :param distortion_centre: The camera's distortion centre in pixel coordinates.
@@ -30,7 +30,14 @@ def backproject(points: np.ndarray, intrinsics: np.ndarray,
     coeffs = np.power(norm[:, None], [0, 1, 2, 3, 4]) * intrinsics
     coeffs[:, 1] -= points_flat[:, 2]
     companion = build_companion_matrix(coeffs)
-    roots, _ = np.linalg.eig(companion)
+    valid_companion_matrices = ~np.any(np.isnan(companion), axis=(1, 2))
+    roots = np.full(
+        (companion.shape[0], companion.shape[1]),
+        np.nan,
+        dtype=np.complex64
+    )
+    if np.any(valid_companion_matrices):
+        roots[valid_companion_matrices], _ = np.linalg.eig(companion[valid_companion_matrices])
     roots_real = np.real(roots)
     valid_roots_mask = np.isreal(roots) & (roots_real > 0)
     valid_roots_rows = np.where(np.any(valid_roots_mask, axis=-1))[0]
@@ -84,11 +91,11 @@ def backproject_fast(points: np.ndarray,
     'stretch_matrix' : '2,2',
     'intrinsics' : '5'
 })
-def project(pixels: np.ndarray, intrinsics: np.ndarray,
+def backproject(pixels: np.ndarray, intrinsics: np.ndarray,
             distortion_centre: np.ndarray, scaling_matrix: Optional[np.ndarray] = None,
             normalise_rays: bool = True) -> np.ndarray:
     """
-    Project pixels into the world-space.
+    Backproject pixels into the world-space.
     :param pixels: The pixels to project. Any shape with last dimension having length 2.
     :param distortion_centre: The distortion centre x-y in pixels.
     :param intrinsics: The intrinsic parameters / polynomial coefficients in ascending order.

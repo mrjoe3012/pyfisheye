@@ -1,10 +1,15 @@
 from pyfisheye.utils.check_shapes import check_shapes
-from pyfisheye.utils.common import unnormalize_coefficients
-from scipy.optimize import minimize, LinearConstraint
+from pyfisheye.utils.common import get_logger, get_3d_transformation
+from scipy.optimize import minimize, LinearConstraint, least_squares
 from scipy.sparse import csc_matrix
+from scipy.spatial.transform import Rotation
 from typing import Optional
+from pyfisheye.nonlinear_optimisation_result import NonlinearOptimisationResult
+from pyfisheye.projection import project
 import itertools
 import numpy as np
+
+__logger = get_logger()
 
 class OptimRuntimeError(RuntimeError):
     def __init__(self, msg: Optional[str] = None) -> None:
@@ -32,6 +37,8 @@ def partial_extrinsics(pattern_observations: np.ndarray,
         with the z-component set to NaN. The dimension with length 4 corresponds to the 4 possible
         solutions.
     """
+    __logger.debug(f'Computing partial extrinsics for '
+                   '{pattern_observations.shape[0]} observations.')
     pattern_observations = pattern_observations - distortion_centre
     # generate the (empty) result N,3,3
     result = np.tile(
@@ -66,13 +73,14 @@ def partial_extrinsics(pattern_observations: np.ndarray,
         real_roots = np.real(roots[np.isclose(np.imag(roots), 0)])
         positive_roots = real_roots[real_roots > 0]
         if len(positive_roots) != 1:
-            raise OptimRuntimeError("Unexpected error.")
-        for sol_idx, (lambda_sign, r_13_sign) in enumerate(itertools.product([1, -1], repeat=2)):
+            raise OptimRuntimeError(f"Invalid number of positive roots for observation {i=}.")
+        for sol_idx, (lambda_sign, r_31_sign) in enumerate(itertools.product([1, -1], repeat=2)):
             result[i, sol_idx, :2, :2] = H[i][:4].reshape(2, 2)
             result[i, sol_idx, :2, -1] = H[i][-2:]
-            result[i, sol_idx, 2, 0] = r_13_sign * positive_roots[0] ** 0.5
+            result[i, sol_idx, 2, 0] = r_31_sign * positive_roots[0] ** 0.5
             result[i, sol_idx, 2, 1] = - B2[i] / result[i, sol_idx, 2, 0]
             result[i, sol_idx] /= lambda_sign * np.linalg.norm(result[i, sol_idx, :, 0])
+    __logger.debug("Finished computing partial extrinsics.")
     return result
 
 @check_shapes({
@@ -97,6 +105,8 @@ def select_best_extrinsic_solution(pattern_observations: np.ndarray,
     :param image_radius: The image radius in pixels.
     :returns: N,3,3 array containing the best solution for each observation.
     """
+    __logger.debug("Selecting the best extrinsic solution for " \
+                   f"{pattern_observations.shape[0]} observations.")
     pattern_observations_norm = pattern_observations - distortion_centre
     # first, select the solutions in the correct quadrant
     best_quadrant_index = np.argmin(
@@ -116,6 +126,7 @@ def select_best_extrinsic_solution(pattern_observations: np.ndarray,
         raise OptimRuntimeError()
     extr_correct_quadrant = extrinsics[np.where(mask_having_right_quadrant)]
     extr_correct_quadrant = extr_correct_quadrant.reshape(pattern_observations_norm.shape[0], 2, 3, 3)
+    __logger.debug(f"{extr_correct_quadrant=}")
     # now select the solution resulting in a polynomial tending to +ve infinity
     selection: list[int] = []
     for observation_idx in range(len(pattern_observations_norm)):
@@ -131,8 +142,10 @@ def select_best_extrinsic_solution(pattern_observations: np.ndarray,
                 break
         if best_solution is None:
             raise OptimRuntimeError()
+        __logger.debug(f"{observation_idx=} {best_solution=}")
         selection.append(best_solution)
     result = extr_correct_quadrant[np.arange(len(extr_correct_quadrant)), selection]
+    __logger.debug("Finished selecting best solutions.")
     return result
 
 @check_shapes({
@@ -164,6 +177,8 @@ def intrinsics_and_z_translation(pattern_observations: np.ndarray,
     :returns: The intrinsic parameters (5,) in ascending order of power followed by the
         z-translation for each observation.
     """
+    __logger.debug(f"Computing intrinsics and z-translation for" 
+                   f"{pattern_observations.shape[0]} observations.")
     pattern_observations = pattern_observations - distortion_centre
     if len(pattern_observations.shape) == 2:
         pattern_observations = pattern_observations.reshape(-1, *pattern_observations.shape)
@@ -228,6 +243,8 @@ def intrinsics_and_z_translation(pattern_observations: np.ndarray,
         axis=-1
     ).flatten()
     if monotonic:
+        __logger.debug(f"Using trust-constr optimisation with monotonocity constraints. "
+                       f"{num_rho_samples=}")
         # setup the montonicity constraint Nx >= 0
         rho_samples = np.linspace(
             np.finfo(pattern_observations.dtype).eps,
@@ -268,15 +285,307 @@ def intrinsics_and_z_translation(pattern_observations: np.ndarray,
         )
         H = result.x
     else:
+        __logger.debug("Using standard least squares solver with no monotonicity constraints.")
         H = np.linalg.lstsq(M, b)[0]
-    intrinsics = unnormalize_coefficients(
-        np.array([
-            H[0], 0, *H[1:4]
-        ]),
-        image_radius
-    )
+    intrinsics_norm = np.array([
+        H[0], 0, *H[1:4]
+    ])
     z_translation = H[4:]
-    return intrinsics, z_translation
+    __logger.debug("Finished computing intrinsics and z-translation.")
+    return intrinsics_norm, z_translation
+
+@check_shapes({
+    'pattern_observations' : 'N,M,2',
+    'pattern_world_coords' : 'M,3',
+    'distortion_centre' : '2',
+    'extrinsics' : 'N,3,3',
+    'intrinsics' : '5'
+})
+def linear_refinement_extrinsics(pattern_observations: np.ndarray,
+                      pattern_world_coords: np.ndarray,
+                      distortion_centre: np.ndarray,
+                      extrinsics: np.ndarray,
+                      intrinsics: np.ndarray, image_radius: float) -> np.ndarray:
+    """
+    Solves all linear equations simultanesouly
+        using the estimated intrinsic parameters to
+        refine the extrinsic parameters.
+    :param distortion_centre: x-y distortion centre.
+    :param pattern_observations: The pattern coordinates in image
+        space centred around the initial centre of distortion (middle
+        of the image). Size should be (N, M, 2) where N is the number
+        of observations of the pattern and M is the total number of
+        corners in the calibration pattern stored in row-major order.
+    :param extrinsics: The (N, 3, 3) extrinsics transformation matrix
+        containing the first two columns of the rotation matrix and
+        the translation vector.
+    :param intrinsics: An array of 5 polynomial coefficients in ascending
+        order of power.
+    :param image_radius: The image radius in pixels.
+    :returns: The refined extrinsics with the same shape as the input
+        extrinsics.
+    """
+    __logger.debug("Performing a linear refinement of the extrinsic parameters for "
+                   f"for {pattern_observations.shape[0]} observations.")
+    pattern_observations = pattern_observations - distortion_centre
+    # compute the radial distance for the observations
+    rho = np.linalg.norm(pattern_observations, axis=-1)
+    rho /= image_radius
+    # store the shape of first two dims (n_obs, n_corners)
+    base_shape = rho.shape
+    # evaluate the model
+    f_rho = np.polyval(intrinsics[::-1], rho)[..., None]
+    # set up the system of linear homogenous equations M * H = 0
+    # where H = [r_11, r_12, r_21, r_22, r_31, r_32 t_1, t_2, t_3]^T
+    M = np.stack(
+        [
+            np.concatenate(
+                [
+                    np.zeros((*base_shape, 2)),
+                    -pattern_world_coords[..., :2] * f_rho,
+                    pattern_world_coords[..., :2] * pattern_observations[..., [1]],
+                    np.zeros((*base_shape, 1)),
+                    -f_rho,
+                    pattern_observations[..., [1]]
+                ],
+                axis=-1
+            ),
+            np.concatenate(
+                [
+                    pattern_world_coords[..., :2] * f_rho,
+                    np.zeros((*base_shape, 2)),
+                    -pattern_world_coords[..., :2] * pattern_observations[..., [0]],
+                    f_rho,
+                    np.zeros((*base_shape, 1)),
+                    -pattern_observations[..., [0]]
+                ],
+                axis=-1
+            ),
+            np.concatenate(
+                [
+                    -pattern_observations[..., [1]] * pattern_world_coords[..., :2],
+                    pattern_observations[..., [0]] * pattern_world_coords[..., :2],
+                    np.zeros((*base_shape, 2)),
+                    -pattern_observations[..., [1]],
+                    pattern_observations[..., [0]],
+                    np.zeros((*base_shape, 1))
+                ],
+                axis=-1
+            ),
+        ],
+        axis=-1
+    ).swapaxes(-1, -2).reshape(len(pattern_observations), -1, 9)
+    Vh = np.linalg.svd(M)[2]
+    H = Vh.swapaxes(1 ,2)[..., -1]
+    result = np.zeros((2, *extrinsics.shape), dtype=extrinsics.dtype).swapaxes(0, 1)
+    result[..., :3, :2] = H[:, :6].reshape(-1, 1, 3, 2)
+    result[..., :3, -1] = H[:, None, -3:]
+    for i in range(pattern_observations.shape[0]):
+        lmbda = np.mean(
+            np.linalg.norm(
+                result[i, 0, :3, :2].swapaxes(-1, -2),
+                axis=-1
+            ),
+            axis=-1
+        )
+        result[i, 0] /= lmbda
+        result[i, 1] /= -lmbda
+    best_result_indices = np.argmin(
+        np.linalg.norm(
+            result[..., :2, -1] - pattern_observations[:, None, 0, :],
+            axis=-1
+        ),
+        axis=-1
+    )
+    # optional: fix up the rotations. makes reprojection look worse
+    # but results in valid rotations
+    # TODO: implement intrinsic refinement and try the whole thing
+    # with and without below. if better without below then maybe
+    # just leave rotations as invalid and fix them up before nonlinear
+    # refinement
+    result = result[np.arange(result.shape[0]), best_result_indices]
+    for i in range(len(result)):
+        from scipy.spatial.transform import Rotation
+        vec3 = np.cross(result[i, :, 0], result[i, :, 1])
+        rot = np.concatenate([result[i, :, :2], vec3[:, None]], axis=-1)
+        result[i, :, :2] = Rotation.from_matrix(rot).as_matrix()[:, :2]
+    __logger.debug("Finished computing partial extrinsics.")
+    return result
+
+@check_shapes({
+    'pattern_observations' : 'N,M,2',
+    'pattern_world_coords' : 'M,3',
+    'distortion_centre' : '2',
+    'extrinsics' : 'N,3,3',
+    'intrinsics' : '5',
+})
+def linear_refinement_intrinsics(pattern_observations: np.ndarray,
+                                 pattern_world_coords: np.ndarray,
+                                 distortion_centre: np.ndarray,
+                                 extrinsics: np.ndarray,
+                                 image_radius: float) -> np.ndarray:
+    """
+    Uses the refined extrinsics from linear_refinement_extrinsics
+        to solve a linear system of equations and thus improve the
+        current estimate for the intrinsic parameters.
+    :param pattern_observations: The pattern coordinates in image
+        space centred around the initial centre of distortion (middle
+        of the image). Size should be (N, M, 2) where N is the number
+        of observations of the pattern and M is the total number of
+        corners in the calibration pattern stored in row-major order.
+    :param pattern_world_coords: The pattern coordinates in world space with
+        z = 0.
+    :param distortion_centre: The distortion centre x-y in pixels.
+    :param extrinsics: The (N, 3, 3) extrinsics transformation matrix
+        computed by partial_extrinsics() which has all z-translation
+        componens set to np.nan. This will be modified in-place such
+        that z-components are set to the linear estimate.
+    :returns: The refined intrinsics with the same shape as the input
+        intrinsics.
+    """
+    __logger.debug(f"Performing linear refinement of intrinsics parameters for "
+                   f"{len(pattern_observations)} observations.")
+    pattern_observations = pattern_observations - distortion_centre 
+    # compute rho, the radial distance
+    rho = np.linalg.norm(
+        pattern_observations,
+        axis=-1,
+    )
+    rho /= image_radius
+    # variable names for the constants used in the matrix
+    A = np.sum(
+        pattern_world_coords[:, :2] * extrinsics[:, None, 1, :2],
+        axis=-1
+    ) + extrinsics[:, 1, [-1]]
+    B = pattern_observations[..., 1] * (np.sum(
+        pattern_world_coords[:, :2] * extrinsics[:, None, 2, :2],
+        axis=-1
+    ) + extrinsics[:, 2, [-1]])
+    C = np.sum(
+        pattern_world_coords[:, :2] * extrinsics[:, None, 0, :2],
+        axis=-1
+    ) + extrinsics[:, 0, [-1]]
+    D = pattern_observations[..., 0] * (np.sum(
+        pattern_world_coords[:, :2]  * extrinsics[:, None, 2, :2],
+        axis=-1
+    ) + extrinsics[:, 2, [-1]])
+    # setup the linear system of equations Tx = Y
+    T = np.stack(
+        [
+            np.stack(
+                [
+                    A, rho**2 * A,
+                    rho ** 3 * A, rho ** 4 * A
+                ],
+                axis=-1
+            ),
+            np.stack(
+                [
+                    C, rho**2 * C,
+                    rho ** 3 * C, rho ** 4 * C
+                ],
+                axis=-1
+            )
+        ],
+        axis=-2
+    ).reshape(-1, 4)
+    Y = np.stack(
+        [
+            B, D
+        ],
+        axis=-1
+    ).flatten()
+    x = np.linalg.lstsq(T, Y)[0]
+    result = np.array([x[0], 0, *x[1:]])
+    __logger.debug(f"Computed linear refinement of intrinsic parameters.")
+    return result
+
+@check_shapes({
+    ''
+})
+def nonlinear_refinement(pattern_observations: np.ndarray,
+                         pattern_world_coords: np.ndarray,
+                         distortion_centre: np.ndarray,
+                         extrinsics: np.ndarray,
+                         intrinsics: np.ndarray,
+                         stretch_matrix: np.ndarray) -> NonlinearOptimisationResult:
+    """
+    :param intrinsics: Unnormalized polynomial coefficients
+        in ascending order.
+    TODO: split into its own file...
+    """
+    prev_residuals: Optional[np.ndarray] = None
+    c = 1
+    def pack(extr: np.ndarray, intr: np.ndarray, scale: np.ndarray,
+             dist_centre: np.ndarray) -> np.ndarray:
+        rot, trans = get_3d_transformation(extr)
+        quats = Rotation.from_matrix(rot).as_quat()
+        c, d, e = scale[0, 0], scale[0, 1], scale[1, 0]
+        params = np.concatenate(
+            [
+                quats.flatten(),
+                trans.flatten(),
+                intr[[0, 2, 3, 4]],
+                dist_centre,
+                [c, d, e],
+            ],
+            axis=0
+        ) 
+        return params
+    def unpack(params: np.ndarray):
+        num_quat_elems = 4 * pattern_observations.shape[0]
+        num_trans_elems = 3 * pattern_observations.shape[0]
+        num_intr_elems = 4
+        num_scale_elems = 3
+        num_dist_centre_elems = 2
+        quats = params[:num_quat_elems].reshape(-1, 4)
+        rot = Rotation.from_quat(quats).as_matrix()
+        trans = params[num_quat_elems:num_quat_elems + num_trans_elems].reshape(-1, 3, 1)
+        extr = np.concatenate([rot[..., :2], trans], axis=-1)
+        intr_begin = num_quat_elems + num_trans_elems
+        intr = params[intr_begin:intr_begin + num_intr_elems]
+        intr = np.array([intr[0], 0, *intr[1:]])
+        dist_centre_begin = intr_begin + num_intr_elems
+        dist_centre = params[dist_centre_begin:dist_centre_begin + num_dist_centre_elems]
+        scale_begin = dist_centre_begin + num_dist_centre_elems
+        scale_mat = np.array([*params[scale_begin:scale_begin + num_scale_elems], 1]).reshape(2, 2)
+        return extr, intr, scale_mat, dist_centre
+    def loss(params: np.ndarray) -> np.ndarray:
+        nonlocal prev_residuals
+        extr, intr, scale_mat, dist_centre = unpack(params)
+        transformed_world_coords = \
+            (extr[:, None, :, :2] @ pattern_world_coords[None, :, :2, None]).squeeze(-1)
+        transformed_world_coords += extr[:, None, :, 2]
+        projected_pixels = project(
+            transformed_world_coords,
+            intr,
+            dist_centre,
+            scale_mat
+        )
+        residuals = (projected_pixels - pattern_observations).flatten()
+        # Weighted least squares using Huber's function
+        weights: float | np.ndarray
+        if prev_residuals is None:
+            weights = 1.0
+        else:
+            abs_res = np.abs(prev_residuals)
+            weights = c / abs_res
+            weights[abs_res <= c] = 1.0
+        prev_residuals = residuals.copy()
+        return weights * residuals
+    result = least_squares(
+        fun=loss,
+        x0=pack(extrinsics, intrinsics, stretch_matrix, distortion_centre),
+        method='lm',
+        verbose=1
+    )
+    extrinsics, intrinsics, stretch_matrix, distortion_centre = unpack(result.x)
+    return NonlinearOptimisationResult(
+        extrinsics=extrinsics,
+        intrinsics=intrinsics,
+        dist_centre=distortion_centre,
+        scaling_mat=stretch_matrix
+    )
 
 @check_shapes({
     'intrinsics' : '5',
@@ -293,9 +602,11 @@ def build_inv_lookup_table(intrinsics: np.ndarray, image_radius: np.ndarray,
     :returns: A tuple containing the theta and rho values, sorted in ascending order by theta. Use
         np.interp to evaluate the lookup table.
     """
+    __logger.debug(f"Building inverse lookup table with {n_samples=}.")
     samples = np.linspace(0, image_radius, n_samples)
     rho = np.sqrt(2) * samples
     f_rho = np.polyval(intrinsics[::-1], rho)
     theta = np.acos(f_rho / np.sqrt(f_rho ** 2 + 2 * samples ** 2))
     sorted_indices = np.argsort(theta)
+    __logger.debug("Finished building inverse lookup table.")
     return theta[sorted_indices], rho[sorted_indices]
