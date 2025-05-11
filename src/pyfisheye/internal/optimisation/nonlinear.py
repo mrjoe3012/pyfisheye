@@ -1,7 +1,7 @@
-from pyfisheye.utils.check_shapes import check_shapes
-from pyfisheye.utils.common import get_3d_transformation, get_logger
-from pyfisheye.optimisation.optim_result import OptimResult
-from pyfisheye.projection import project
+from pyfisheye.internal.utils.check_shapes import check_shapes
+from pyfisheye.internal.utils.common import get_3d_transformation, get_logger
+from pyfisheye.internal.optimisation.optim_result import OptimResult
+from pyfisheye.internal.projection import project
 from typing import Optional
 from scipy.spatial.transform import Rotation
 from scipy.optimize import least_squares

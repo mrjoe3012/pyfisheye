@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Optional, Any
-from pyfisheye.utils.check_shapes import check_shapes
+from pyfisheye.internal.utils.check_shapes import check_shapes
 from rich.logging import RichHandler
 from functools import cache
 import logging

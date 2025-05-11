@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Optional
-from pyfisheye.utils.check_shapes import check_shapes
-from pyfisheye.utils.common import build_companion_matrix, get_logger
+from pyfisheye.internal.utils.check_shapes import check_shapes
+from pyfisheye.internal.utils.common import build_companion_matrix, get_logger
 
 __all__ = ['project', 'backproject', 'project_fast']
 __logger = get_logger()

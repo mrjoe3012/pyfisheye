@@ -1,5 +1,5 @@
-from pyfisheye.utils.check_shapes import check_shapes
-from pyfisheye.utils.common import get_logger
+from pyfisheye.internal.utils.check_shapes import check_shapes
+from pyfisheye.internal.utils.common import get_logger
 from scipy.optimize import minimize, LinearConstraint
 from scipy.sparse import csc_matrix
 from typing import Optional
