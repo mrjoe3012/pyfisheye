@@ -1,7 +1,7 @@
 from typing import NamedTuple
 import numpy as np
 
-class NonlinearOptimisationResult(NamedTuple):
+class OptimResult(NamedTuple):
     extrinsics: np.ndarray
     intrinsics: np.ndarray
     dist_centre: np.ndarray
