@@ -1,4 +1,4 @@
-from pyfisheye.utils.check_shapes import check_shapes
+from pyfisheye.internal.utils.check_shapes import check_shapes
 import numpy as np
 import pytest
 

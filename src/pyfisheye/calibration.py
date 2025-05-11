@@ -1,11 +1,11 @@
 from pyfisheye.calibration_options import CalibrationOptions
 from pyfisheye.calibration_result import CalibrationResult
-from pyfisheye.utils.common import check_shapes
+from pyfisheye.internal.utils.common import check_shapes
 from typing import Optional
 from tqdm import tqdm
-import pyfisheye.optimisation as optim
-import pyfisheye.utils.common as common
-import pyfisheye.projection as projection
+import pyfisheye.internal.optimisation as optim
+import pyfisheye.internal.utils.common as common
+import pyfisheye.internal.projection as projection
 import numpy as np
 
 __all__ = ['calibrate']

@@ -1,9 +1,9 @@
 import numpy as np
-from pyfisheye.utils.check_shapes import check_shapes
+from pyfisheye.internal.utils.check_shapes import check_shapes
 from typing import Optional
-import pyfisheye.projection as projection
-import pyfisheye.optimisation as optim
-import pyfisheye.utils.common as common
+import pyfisheye.internal.projection as projection
+import pyfisheye.internal.optimisation as optim
+import pyfisheye.internal.utils.common as common
 
 @check_shapes({
     'distortion_centre' : '2',
