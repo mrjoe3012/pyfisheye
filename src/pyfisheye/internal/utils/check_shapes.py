@@ -1,6 +1,6 @@
 from functools import wraps
 from ndshapecheck import ShapeCheck # type: ignore
-from typing import Callable, Any
+from typing import Any
 import inspect
 
 def check_shapes(param_names_and_rules: dict[str, str]):

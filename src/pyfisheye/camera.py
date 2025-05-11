@@ -1,7 +1,7 @@
 from __future__ import annotations
 import numpy as np
 from pyfisheye.internal.utils.check_shapes import check_shapes
-from typing import Optional, TextIO
+from typing import Optional
 import pyfisheye.internal.projection as projection
 import pyfisheye.internal.optimisation as optim
 import pyfisheye.internal.utils.common as common

@@ -7,16 +7,18 @@ authors = [
     { name = "Joseph Agrane", email = "josephagrane@gmail.com" }
 ]
 requires-python = ">=3.11"
-dependencies = [
-    "ndshapecheck>=0.2.2",
-    "numpy>=2.2.5",
-    "rich>=14.0.0",
-    "scipy>=1.15.2",
-    "scipy-stubs>=1.15.2.2",
-    "tqdm>=4.67.1",
-]
 license = "MIT"
 license-files = ["LICENSE.md"]
+dependencies = [
+    "matplotlib>=3.10.3",
+    "ndshapecheck>=0.2.2",
+    "numpy>=2.2.5",
+    "opencv-python-headless>=4.11.0.86",
+    "pyqt6>=6.9.0",
+    "rich>=14.0.0",
+    "scipy>=1.15.3",
+    "tqdm>=4.67.1",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -24,10 +26,9 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "matplotlib>=3.10.1",
     "mypy>=1.15.0",
-    "opencv-python-headless>=4.11.0.86",
-    "pyqt5>=5.15.11",
     "pytest>=8.3.5",
-    "ruff>=0.11.8",
+    "ruff>=0.11.9",
+    "scipy-stubs>=1.15.3.0",
 ]
+
