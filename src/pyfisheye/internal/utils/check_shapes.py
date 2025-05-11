@@ -3,14 +3,14 @@ from ndshapecheck import ShapeCheck # type: ignore
 from typing import Callable, Any
 import inspect
 
-def check_shapes(param_names_and_rules: dict[str, str]) -> Callable[..., Any]:
+def check_shapes(param_names_and_rules: dict[str, str]):
     """
     A decorator for checking the shapes of input elements. 
     :param param_names_and_rules: A dictionary containing each parameter to be checked and the
     corresponding rule. Only objects having 'shape' attributes are checked.
     :returns: The decorator.
     """
-    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(fn):
         @wraps(fn)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             sig = inspect.signature(fn)
