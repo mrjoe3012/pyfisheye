@@ -15,9 +15,9 @@ class CalibrationOptions:
     monotonicity_constraint_samples: int = 500 
 
     def __post_init__(self) -> None:
-        if self.initial_distortion_centre_x is not None and self.initial_image_centre_x <= 0:
+        if self.initial_distortion_centre_x is not None and self.initial_distortion_centre_x <= 0:
             raise ValueError("Option 'initial_image_centre_x' must be greater than 0.")
-        if self.initial_distortion_centre_y is not None and self.initial_image_centre_y <= 0:
+        if self.initial_distortion_centre_y is not None and self.initial_distortion_centre_y <= 0:
             raise ValueError("Option 'initial_image_centre_y' must be greater than 0.")
         if self.optimise_distortion_centre and self.distortion_centre_search_grid_size <= 0:
             raise ValueError("Option 'distortion_centre_search_grid_size' must be greater than 0.")

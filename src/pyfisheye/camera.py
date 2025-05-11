@@ -20,10 +20,10 @@ class Camera:
                  stretch_matrix: np.ndarray = np.eye(2, dtype=np.float64),
                  image_size_wh: Optional[np.ndarray] = None,
                  precompute_lookup_table: bool = False) -> None:
-        self._distortion_centre = distortion_centre
-        self._intrinsics = intrinsics
-        self._stretch_matrix = stretch_matrix
-        self._image_size = image_size_wh 
+        self._distortion_centre = np.array(distortion_centre)
+        self._intrinsics = np.array(intrinsics)
+        self._stretch_matrix = np.array(stretch_matrix)
+        self._image_size = np.array(image_size_wh)
         if precompute_lookup_table:
             self.__compute_lookup_table()
         else:
@@ -82,7 +82,7 @@ class Camera:
         if self._image_size is not None:
             data['image_size'] = self._image_size.tolist()
         with open(path, 'w') as f:
-            json.dump(data, f)
+            json.dump(data, f, indent=2)
 
     @staticmethod
     def from_json(path: str) ->  Camera:

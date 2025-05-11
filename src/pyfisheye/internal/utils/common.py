@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional, Any
+from typing import Optional
 from pyfisheye.internal.utils.check_shapes import check_shapes
 from rich.logging import RichHandler
 from functools import cache
@@ -46,7 +46,7 @@ def generate_pattern_world_coords(num_rows: int, num_cols: int,
                 ),
                 axis=-1
             ),
-            np.zeros((9, 6, 1))
+            np.zeros((num_rows, num_cols, 1))
         ],
         axis=-1
     ).astype(np.float64).reshape(-1, 3)

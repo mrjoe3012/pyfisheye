@@ -275,7 +275,6 @@ def intrinsics_and_z_translation(pattern_observations: np.ndarray,
             constraints=[LinearConstraint(csc_matrix(N), lb=0)],
             options={
                 'maxiter' : 10_000,
-                'disp' : True,
             },
             jac=lambda x: jac_scale @ x - jac_const,
             hess=lambda x: hess
