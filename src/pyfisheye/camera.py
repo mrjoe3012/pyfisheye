@@ -1,17 +1,19 @@
+from __future__ import annotations
 import numpy as np
 from pyfisheye.internal.utils.check_shapes import check_shapes
-from typing import Optional
+from typing import Optional, TextIO
 import pyfisheye.internal.projection as projection
 import pyfisheye.internal.optimisation as optim
 import pyfisheye.internal.utils.common as common
+import json
 
-@check_shapes({
-    'distortion_centre' : '2',
-    'intrinsics' : '5',
-    'stretch_matrix' : '2,2',
-    'image_size_wh' : '2'
-})
 class Camera:
+    @check_shapes({
+        'distortion_centre' : '2',
+        'intrinsics' : '5',
+        'stretch_matrix' : '2,2',
+        'image_size_wh' : '2'
+    })
     def __init__(self,
                  distortion_centre: np.ndarray,
                  intrinsics: np.ndarray,
@@ -70,3 +72,23 @@ class Camera:
             self._intrinsics,
             common.compute_image_radius(*self._image_size, self._distortion_centre)
         )
+
+    def to_json(self, path: str) -> None:
+        data = {
+            'intrinsics' : self._intrinsics.tolist(),
+            'distortion_centre' : self._distortion_centre.tolist(),
+            'stretch_matrix' : self._stretch_matrix.tolist(),
+        }
+        if self._image_size is not None:
+            data['image_size'] = self._image_size.tolist()
+        with open(path, 'w') as f:
+            json.dump(data, f)
+
+    @staticmethod
+    def from_json(path: str) ->  Camera:
+        with open(path, 'r') as f:
+            data = json.load(f)
+        kwargs = {
+            k : np.array(v) for k, v in data.items()
+        }
+        return Camera(**kwargs)
