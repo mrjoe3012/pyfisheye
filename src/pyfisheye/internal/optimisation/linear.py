@@ -134,7 +134,7 @@ def select_best_extrinsic_solution(pattern_observations: np.ndarray,
                 extrinsics[[observation_idx], solution_idx], image_radius,
                 monotonic=False,
             )
-            if intrinsics_norm[-1] >= 0:
+            if intrinsics_norm[0] < 0:
                 best_solution = solution_idx
                 break
         if best_solution is None:
