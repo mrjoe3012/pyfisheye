@@ -94,7 +94,6 @@ def calibrate(pattern_observations: np.ndarray,
     )
     img_centre_x, img_centre_y = image_width / 2, image_height / 2
     stretch_matrix = np.eye(2, dtype=np.float64)
-    _centres, _errors = [], []
     if calibration_options.optimise_distortion_centre:
         potential_centres = np.stack(
             np.meshgrid(
@@ -154,8 +153,6 @@ def calibrate(pattern_observations: np.ndarray,
                     axis=-1
                 )
             )
-            _centres.append(distortion_centre.copy())
-            _errors.append(mean_error)
             if mean_error < optimal_distortion_centre_mean_error:
                 optimal_distortion_centre_mean_error = mean_error
                 optimal_distortion_centre = distortion_centre
@@ -167,9 +164,6 @@ def calibrate(pattern_observations: np.ndarray,
             calibration_options.initial_distortion_centre_x or img_centre_x,
             calibration_options.initial_distortion_centre_y or img_centre_y
         ])
-    import pickle
-    with open('centres_and_errors.p', 'wb') as f:
-        pickle.dump((_centres, _errors), f)
     image_radius = common.compute_image_radius(
         image_width, image_height,
         optimal_distortion_centre
