@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pyfisheye.internal.utils.common import get_logger, generate_pattern_world_coords
 from pyfisheye.calibration import (calibrate as calibrate_camera, reproject,
                                    CalibrationOptions, CalibrationResult)
+from pyfisheye.internal.utils.common import compute_image_radius
 from pyfisheye.camera import Camera
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -27,12 +28,13 @@ class Arguments(Namespace):
     initial_distortion_centre_x: Optional[float]
     initial_distortion_centre_y: Optional[float]
     weighted_least_squares_threshold: float
-    num_monotonicity_constraint_samples: int
+    num_monotonicity_constraint_samples: int = 1000
     nonlinear_refinement: bool
     distortion_centre_search_grid_size: int = 20
     save_results: Optional[str]
     show_results: bool
     save_calibration_to: str
+    log_level: str = 'INFO'
 
 @dataclass
 class Status:
@@ -73,12 +75,14 @@ def parse_args() -> Arguments:
     parser.add_argument('--initial-distortion-centre-x', '-cx', type=float, default=None)
     parser.add_argument('--initial-distortion-centre-y', '-cy', type=float, default=None)
     parser.add_argument('--weighted-least-squares-threshold', type=float, default=1)
-    parser.add_argument('--num-monotonicity-constraint-samples', '-m', type=int, default=500)
+    parser.add_argument('--num-monotonicity-constraint-samples', '-m', type=int,
+                        default=Arguments.num_monotonicity_constraint_samples)
     parser.add_argument('--nonlinear-refinement', type=check_bool, default=True)
     parser.add_argument('--distortion-centre-search-grid-size', type=int, default=20)
     parser.add_argument('--save-results', type=str, default=None)
     parser.add_argument('--show-results', type=check_bool, default=True)
     parser.add_argument('--save-calibration-to', type=str, default='calibration.json')
+    parser.add_argument('--log-level', type=str, default=Arguments.log_level)
     args = parser.parse_args(namespace=Arguments())
     return args
 
@@ -274,6 +278,7 @@ def show_and_save_results(calib_result: CalibrationResult,
 def calibrate(arguments: Optional[Arguments] = None) -> None:
     if arguments is None:
         return calibrate(parse_args())
+    _logger.setLevel(arguments.log_level)
     status, pattern_observations, valid_img_mask, image_size = find_corners(
         arguments.images,
         arguments.pattern_num_rows,
