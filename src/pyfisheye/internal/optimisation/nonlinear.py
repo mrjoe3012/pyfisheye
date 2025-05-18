@@ -99,6 +99,8 @@ def nonlinear_refinement(pattern_observations: np.ndarray,
         x0=pack(extrinsics, intrinsics, stretch_matrix, distortion_centre),
         method='lm'
     )
+    if not result['success']:
+        __logger.warning("Nonlinear refinement failed to converge.")
     __logger.debug(f"Finished refinement in {result['nfev']} iterations. "
                    f"loss={result['cost']:.2f} message='{result['message']}'")
     extrinsics, intrinsics, stretch_matrix, distortion_centre = unpack(result.x)
