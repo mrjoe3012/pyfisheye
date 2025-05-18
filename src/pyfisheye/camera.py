@@ -80,7 +80,7 @@ class Camera:
             'stretch_matrix' : self._stretch_matrix.tolist(),
         }
         if self._image_size is not None:
-            data['image_size'] = self._image_size.tolist()
+            data['image_size_wh'] = self._image_size.tolist()
         with open(path, 'w') as f:
             json.dump(data, f, indent=2)
 
