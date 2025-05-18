@@ -498,7 +498,6 @@ def linear_refinement_intrinsics(pattern_observations: np.ndarray,
     __logger.debug(f"Computed linear refinement of intrinsic parameters.")
     return result
 
-# TODO: move
 @check_shapes({
     'intrinsics' : '5',
     'image_radius' : '2',

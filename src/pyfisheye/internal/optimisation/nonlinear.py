@@ -10,6 +10,47 @@ import numpy as np
 __all__ = ['nonlinear_refinement']
 __logger = get_logger()
 
+def __unpack_arguments(N: int,
+                       params: np.ndarray) -> tuple[np.ndarray, np.ndarray,
+                                                    np.ndarray, np.ndarray]:
+    """
+    :returns: extrinsics, intrinsics, stretch_matrix, distortion_centre
+    """ 
+    num_quat_elems = 4 * N
+    num_trans_elems = 3 * N
+    num_intr_elems = 4
+    num_scale_elems = 3
+    num_dist_centre_elems = 2
+    quats = params[:num_quat_elems].reshape(-1, 4)
+    rot = Rotation.from_quat(quats).as_matrix()
+    trans = params[num_quat_elems:num_quat_elems + num_trans_elems].reshape(-1, 3, 1)
+    extr = np.concatenate([rot[..., :2], trans], axis=-1)
+    intr_begin = num_quat_elems + num_trans_elems
+    intr = params[intr_begin:intr_begin + num_intr_elems]
+    intr = np.array([intr[0], 0, *intr[1:]])
+    dist_centre_begin = intr_begin + num_intr_elems
+    dist_centre = params[dist_centre_begin:dist_centre_begin + num_dist_centre_elems]
+    scale_begin = dist_centre_begin + num_dist_centre_elems
+    scale_mat = np.array([*params[scale_begin:scale_begin + num_scale_elems], 1]).reshape(2, 2)
+    return extr, intr, scale_mat, dist_centre
+
+def __pack_arguments(extr: np.ndarray, intr: np.ndarray, scale: np.ndarray,
+            dist_centre: np.ndarray) -> np.ndarray:
+    rot, trans = get_3d_transformation(extr)
+    quats = Rotation.from_matrix(rot).as_quat()
+    c, d, e = scale[0, 0], scale[0, 1], scale[1, 0]
+    params = np.concatenate(
+        [
+            quats.flatten(),
+            trans.flatten(),
+            intr[[0, 2, 3, 4]],
+            dist_centre,
+            [c, d, e],
+        ],
+        axis=0
+    ) 
+    return params
+
 @check_shapes({
     'pattern_observations' : 'N,M,2',
     'pattern_world_coords' : 'M,3',
@@ -26,51 +67,27 @@ def nonlinear_refinement(pattern_observations: np.ndarray,
                          stretch_matrix: np.ndarray,
                          wnls_threshold: float) -> OptimResult:
     """
-    :param intrinsics: Unnormalized polynomial coefficients
-        in ascending order.
-    TODO: split into its own file...
+    Use LM to perform a nonlinear refinement of all calibration
+        parameters at once. Use Huber's function for robustness to
+        outliers.
+    :param pattern_observations:
+    :param pattern_world_coords:
+    :param distortion_centre:
+    :param extrinsics:
+    :param intrinsics:
+    :param stretch_matrix:
+    :returns: Optimisation result.
     """
     __logger.debug(f"Starting nonlinear refinement for {pattern_observations.shape[0]}"
                    " observations.")
     prev_residuals: Optional[np.ndarray] = None
-    def pack(extr: np.ndarray, intr: np.ndarray, scale: np.ndarray,
-             dist_centre: np.ndarray) -> np.ndarray:
-        rot, trans = get_3d_transformation(extr)
-        quats = Rotation.from_matrix(rot).as_quat()
-        c, d, e = scale[0, 0], scale[0, 1], scale[1, 0]
-        params = np.concatenate(
-            [
-                quats.flatten(),
-                trans.flatten(),
-                intr[[0, 2, 3, 4]],
-                dist_centre,
-                [c, d, e],
-            ],
-            axis=0
-        ) 
-        return params
-    def unpack(params: np.ndarray):
-        num_quat_elems = 4 * pattern_observations.shape[0]
-        num_trans_elems = 3 * pattern_observations.shape[0]
-        num_intr_elems = 4
-        num_scale_elems = 3
-        num_dist_centre_elems = 2
-        quats = params[:num_quat_elems].reshape(-1, 4)
-        rot = Rotation.from_quat(quats).as_matrix()
-        trans = params[num_quat_elems:num_quat_elems + num_trans_elems].reshape(-1, 3, 1)
-        extr = np.concatenate([rot[..., :2], trans], axis=-1)
-        intr_begin = num_quat_elems + num_trans_elems
-        intr = params[intr_begin:intr_begin + num_intr_elems]
-        intr = np.array([intr[0], 0, *intr[1:]])
-        dist_centre_begin = intr_begin + num_intr_elems
-        dist_centre = params[dist_centre_begin:dist_centre_begin + num_dist_centre_elems]
-        scale_begin = dist_centre_begin + num_dist_centre_elems
-        scale_mat = np.array([*params[scale_begin:scale_begin + num_scale_elems], 1]).reshape(2, 2)
-        return extr, intr, scale_mat, dist_centre
     first_iteration = True
     def loss(params: np.ndarray) -> np.ndarray:
         nonlocal prev_residuals, first_iteration
-        extr, intr, scale_mat, dist_centre = unpack(params)
+        extr, intr, scale_mat, dist_centre = __unpack_arguments(
+            pattern_observations.shape[0],
+            params
+        )
         transformed_world_coords = \
             (extr[:, None, :, :2] @ pattern_world_coords[None, :, :2, None]).squeeze(-1)
         transformed_world_coords += extr[:, None, :, 2]
@@ -96,14 +113,17 @@ def nonlinear_refinement(pattern_observations: np.ndarray,
         return weights * residuals
     result = least_squares(
         fun=loss,
-        x0=pack(extrinsics, intrinsics, stretch_matrix, distortion_centre),
+        x0=__pack_arguments(extrinsics, intrinsics, stretch_matrix, distortion_centre),
         method='lm'
     )
     if not result['success']:
         __logger.warning("Nonlinear refinement failed to converge.")
     __logger.debug(f"Finished refinement in {result['nfev']} iterations. "
                    f"loss={result['cost']:.2f} message='{result['message']}'")
-    extrinsics, intrinsics, stretch_matrix, distortion_centre = unpack(result.x)
+    extrinsics, intrinsics, stretch_matrix, distortion_centre = __unpack_arguments(
+        pattern_observations.shape[0],
+        result.x
+    )
     return OptimResult(
         extrinsics=extrinsics,
         intrinsics=intrinsics,
