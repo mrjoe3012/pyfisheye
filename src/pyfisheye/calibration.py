@@ -9,6 +9,7 @@ import pyfisheye.internal.projection as projection
 import numpy as np
 
 __all__ = ['calibrate']
+_logger = common.get_logger()
 
 def __calibrate(pattern_observations: np.ndarray,
                 pattern_world_coords: np.ndarray,
@@ -84,6 +85,8 @@ def calibrate(pattern_observations: np.ndarray,
         raise ValueError("Expected argument 'pattern_observations' to have shape N,M,2 "
                          "where N is greater than 1 and M is equal to pattern_num_cols *"
                          " pattern_num_rows.")
+    prev_level = _logger.level
+    _logger.debug("Starting calibration procedure.")
     pattern_observations = pattern_observations.astype(np.float64)
     pattern_world_coords = common.generate_pattern_world_coords(
         pattern_num_rows, pattern_num_cols,
@@ -91,6 +94,7 @@ def calibrate(pattern_observations: np.ndarray,
     )
     img_centre_x, img_centre_y = image_width / 2, image_height / 2
     stretch_matrix = np.eye(2, dtype=np.float64)
+    _centres, _errors = [], []
     if calibration_options.optimise_distortion_centre:
         potential_centres = np.stack(
             np.meshgrid(
@@ -116,6 +120,9 @@ def calibrate(pattern_observations: np.ndarray,
             iterator = tqdm(iterator, desc='Optimising image centre.')
         optimal_distortion_centre = None
         optimal_distortion_centre_mean_error = np.inf
+        _logger.debug(f"Searching through {len(potential_centres)} potential distortion centres.")
+        # temporarily disable logging due to running calibration in a loop.
+        _logger.setLevel('INFO')
         for distortion_centre in iterator:
             image_radius = common.compute_image_radius(
                 image_width,
@@ -147,14 +154,22 @@ def calibrate(pattern_observations: np.ndarray,
                     axis=-1
                 )
             )
+            _centres.append(distortion_centre.copy())
+            _errors.append(mean_error)
             if mean_error < optimal_distortion_centre_mean_error:
                 optimal_distortion_centre_mean_error = mean_error
                 optimal_distortion_centre = distortion_centre
+        _logger.setLevel(prev_level)
+        _logger.debug(f"Finished searching for distortion centre. {optimal_distortion_centre=}"
+                      f" {optimal_distortion_centre_mean_error=}")
     else:
         optimal_distortion_centre = np.array([
             calibration_options.initial_distortion_centre_x or img_centre_x,
             calibration_options.initial_distortion_centre_y or img_centre_y
         ])
+    import pickle
+    with open('centres_and_errors.p', 'wb') as f:
+        pickle.dump((_centres, _errors), f)
     image_radius = common.compute_image_radius(
         image_width, image_height,
         optimal_distortion_centre
