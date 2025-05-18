@@ -27,7 +27,7 @@ class Arguments(Namespace):
     initial_distortion_centre_x: Optional[float]
     initial_distortion_centre_y: Optional[float]
     weighted_least_squares_threshold: float
-    num_monotonocity_constraint_samples: int
+    num_monotonicity_constraint_samples: int
     nonlinear_refinement: bool
     distortion_centre_search_grid_size: int = 20
     save_results: Optional[str]
@@ -73,7 +73,7 @@ def parse_args() -> Arguments:
     parser.add_argument('--initial-distortion-centre-x', '-cx', type=float, default=None)
     parser.add_argument('--initial-distortion-centre-y', '-cy', type=float, default=None)
     parser.add_argument('--weighted-least-squares-threshold', type=float, default=1)
-    parser.add_argument('--num-monotonocity-constraint-samples', '-m', type=int, default=500)
+    parser.add_argument('--num-monotonicity-constraint-samples', '-m', type=int, default=500)
     parser.add_argument('--nonlinear-refinement', type=check_bool, default=True)
     parser.add_argument('--distortion-centre-search-grid-size', type=int, default=20)
     parser.add_argument('--save-results', type=str, default=None)
@@ -267,7 +267,7 @@ def calibrate(arguments: Optional[Arguments] = None) -> None:
         distortion_centre_search_grid_size=arguments.distortion_centre_search_grid_size,
         nonlinear_refinement=arguments.nonlinear_refinement,
         robust_wnls_threshold=arguments.weighted_least_squares_threshold,
-        monotonicity_constraint_samples=arguments.num_monotonocity_constraint_samples
+        monotonicity_constraint_samples=arguments.num_monotonicity_constraint_samples
     )
     calib_result = calibrate_camera(
         pattern_observations,
