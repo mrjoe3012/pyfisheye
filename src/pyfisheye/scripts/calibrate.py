@@ -250,6 +250,16 @@ def show_and_save_results(calib_result: CalibrationResult,
         figures.append(fig)
         if arguments.save_results is not None:
             fig.savefig(os.path.join(arguments.save_results, f'result_{img_idx}.jpg'))
+    # plot polynomial
+    rho_samples = np.linspace(0, compute_image_radius(w, h, calib_result.optimal_distortion_centre), 300)
+    fig, ax = plt.subplots(1, 1, figsize=(12, 9))
+    ax.set_title('Polynomial')
+    ax.set_xlabel('Rho')
+    ax.set_ylabel('f(Rho)')
+    ax.plot(rho_samples, np.polyval(calib_result.intrinsics[::-1], rho_samples))
+    figures.append(fig)
+    if arguments.save_results is not None:
+        fig.savefig(os.path.join(arguments.save_results, f'polynomial.jpg'))
     _logger.info(f'Pixel error - mean={np.mean(errors):.2f} std={np.std(errors):.2f}')
     if arguments.save_results is not None:
         np.savetxt(
