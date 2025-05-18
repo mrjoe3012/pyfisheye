@@ -217,9 +217,28 @@ def show_and_save_results(calib_result: CalibrationResult,
     for corner_idx, img_idx in enumerate(np.where(mask)[0]):
         fig, ax = plt.subplots(1, 1, figsize=figsize)
         img = cv2.imread(arguments.images[img_idx], cv2.IMREAD_COLOR_RGB)
+        h, w = img.shape[:2]
         ax.imshow(img)
-        ax.scatter(*corners[corner_idx].T, marker='o')
-        ax.scatter(*reprojected[corner_idx].T, marker='x')
+        ax.scatter(*corners[corner_idx].T, marker='o', label='Detected Corners')
+        ax.scatter(*reprojected[corner_idx].T, marker='x', label='Reprojected Corners')
+        cx, cy = calib_result.optimal_distortion_centre
+        ax.scatter(
+            cx, cy,
+            color='green',
+            label='Distortion Centre'
+        )
+        ax_len = max(img.shape[0], img.shape[1]) * 0.1
+        ax.plot(
+            [cx, cx + ax_len],
+            [cy, cy],
+            color='green'
+        )
+        ax.plot(
+            [cx, cx],
+            [cy, cy + ax_len],
+            color='green'
+        )
+        ax.legend()
         mean_pixel_error = np.mean(
             np.linalg.norm(
                 reprojected[corner_idx] - corners[corner_idx],
