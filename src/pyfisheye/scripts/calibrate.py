@@ -15,6 +15,7 @@ import sys
 
 __all__ = ['Arguments', 'calibrate']
 _logger = get_logger()
+plt.rcParams['figure.max_open_warning'] = False
 
 class Arguments(Namespace):
     images: list[str]
@@ -216,9 +217,9 @@ def show_and_save_results(calib_result: CalibrationResult,
     ax.set_aspect('equal')
     if arguments.save_results is not None:
         fig.savefig(os.path.join(arguments.save_results, 'extrinsics.jpg'))
-    # plot intrinsics
     errors = []
     for corner_idx, img_idx in enumerate(np.where(mask)[0]):
+        # plot reprojections
         fig, ax = plt.subplots(1, 1, figsize=figsize)
         img = cv2.imread(arguments.images[img_idx], cv2.IMREAD_COLOR_RGB)
         h, w = img.shape[:2]
@@ -254,6 +255,19 @@ def show_and_save_results(calib_result: CalibrationResult,
         figures.append(fig)
         if arguments.save_results is not None:
             fig.savefig(os.path.join(arguments.save_results, f'result_{img_idx}.jpg'))
+        # plot undistorted pattern
+        camera = Camera(calib_result.optimal_distortion_centre, calib_result.intrinsics,
+                        calib_result.stretch_matrix, img.shape[:2][::-1])
+        reprojected_img = camera.reproject_perspective(img, corners[corner_idx], img_width=800)
+        fig, ax = plt.subplots(1, 1, figsize=(9, 9)) 
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.imshow(reprojected_img)
+        figures.append(fig)
+        if arguments.save_results is not None:
+            fig.savefig(os.path.join(arguments.save_results, f'undistorted_{img_idx}.jpg'))
     # plot polynomial
     rho_samples = np.linspace(0, compute_image_radius(w, h, calib_result.optimal_distortion_centre), 300)
     fig, ax = plt.subplots(1, 1, figsize=(12, 9))

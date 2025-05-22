@@ -99,24 +99,31 @@ class Camera:
         'rotation' : '3,3'
     })
     def map_perspective(self, points_or_pixels: np.ndarray,
-                        img_width: int, img_height: int,
+                        img_width: Optional[int] = None,
+                        img_height: Optional[int] = None,
                         rotation: np.ndarray = np.eye(3, dtype=np.float64)) -> np.ndarray:
         """
         :param points_or_pixels: 2D points in the image or 3D points/rays in the camera
             coordinate system. Any shape as long as the last dimension equals 2 or 3.
-        :param img_width: Number of pixels in the x-axis for the perspective projection.
-        :param img_height: Number of pixels in the y-axis for the perspective projection.
+        :param img_width: Number of pixels in the x-axis for the perspective projection. Leave as
+            None and provide a height to automatically set this and maintain the aspect ratio.
+        :param img_height: Number of pixels in the y-axis for the perspective projection. Leave as
+            None and provide a width to automatically set this and maintain the aspect ratio.
         :param rotation: The rotation matrix to apply to the imaginary perspective camera
-            prior to reprojection. Defaults to the identity so that no rotation is applied.
+            prior to reprojection. Defaults to the identity so that no rotation is applied. For
+            example, the extrinsic orientation of the camera (camera -> world) can be provided
+            to correct for skewed/rotated perspective projections.
         :returns: A max of size (height, width, 2) specifying the coordinates in the original
             for each pixel in the destination image. Uses the provided points_or_pixels to
             compute the correct perspective camera parameters such that all points lie in the
             final image.
         """
+        if img_width is None and img_height is None:
+            raise ValueError("At least one of img_width or img_height needs to be provided.")
         # handle parameters and compute world rays by backprojection / normalising 3d points
-        if img_width <= 0:
+        if img_width is not None and img_width <= 0:
             raise ValueError("img_width must be greater than 0.")
-        if img_height <= 0:
+        if img_height is not None and img_height <= 0:
             raise ValueError("img_height must be greater than 0.")
         if len(points_or_pixels.shape) < 2:
             raise ValueError("At least two points must be provided to compute a perspective"
@@ -134,8 +141,13 @@ class Camera:
         theta = np.atan2(
             *(Rotation.from_euler('zyx', [-phi, 0, 0]).apply(mean_ray)[[0, 2]])
         )
-        # rotate rays so that they are centred
+        # transformation of the perspective camera from its origin to the world origin in order
+        # to capture the right light rays
+        perspective_transformation = \
+            rotation @ Rotation.from_euler('zyx', [-phi, -theta, 0]).inv().as_matrix()
+        # transform rays into perspective camera's frame of reference
         rays_centred = Rotation.from_euler('zyx', [-phi, -theta, 0]).apply(rays)
+        rays_centred = rays @ perspective_transformation # TODO: rename
         # compute the required camera FOV
         horizontal_angles = np.atan2(
             rays_centred[..., 0], rays_centred[..., 2]
@@ -145,6 +157,13 @@ class Camera:
         )
         horizontal_fov = horizontal_angles.max() - horizontal_angles.min()
         vertical_fov = vertical_angles.max() - vertical_angles.min()
+        horizontal_fov = 2 * np.abs(horizontal_angles).max()
+        vertical_fov = 2 * np.abs(vertical_angles).max()
+        # use difference in FOV to set aspect ratio (if both dimensions not provided)
+        if img_width is None:
+            img_width = int(img_height * (horizontal_fov / vertical_fov))
+        elif img_height is None:
+            img_height = int(img_width * (vertical_fov / horizontal_fov))
         # compute the rays coming from the perspective camera
         f_x = img_width / (2 * np.tan(horizontal_fov / 2))
         f_y = img_height / (2 * np.tan(vertical_fov / 2))
@@ -171,19 +190,19 @@ class Camera:
         )[..., None])
         # rotate perspective rays so that they point towards desired points/pixels with the
         # provided orientation
-        perspective_transformation = \
-            rotation @ Rotation.from_euler('zyx', [-phi, -theta, 0]).inv().as_matrix()
         sample_rays = (perspective_transformation @ sample_rays).squeeze(-1)
-        # negate the xy-axis to align with internal left-handed coordinate system TODO: fix
         perspective_mapping = self.world2cam_fast(sample_rays)
+        perspective_mapping = perspective_mapping[:, ::-1, :] # TODO fix
         return perspective_mapping
 
     @check_shapes({
         'original_image' : 'width, height, dims'
     })
     def reproject_perspective(self, original_image: np.ndarray,
-                              points_or_pixels: np.ndarray, img_width: int,
-                              img_height: int) -> np.ndarray:
+                              points_or_pixels: np.ndarray,
+                              rotation: np.ndarray = np.eye(3),
+                              img_width: Optional[int] = None,
+                              img_height: Optional[int] = None) -> np.ndarray:
         """
         :param original_image: The original image to sample from. cv2.remap will be used
             to generate the perspective image with linear interpolation.
@@ -192,15 +211,22 @@ class Camera:
             reprojected image will contain each point and surrounding pixels. It is sufficient
             to provide a bounding box or a small set of pixels of interest rather than a dense
             selection.
-        :param img_width: Number of pixels in the x-axis for the perspective projection.
-        :param img_height: Number of pixels in the y-axis for the perspective projection.
+        :param rotation: The rotation matrix to apply to the imaginary perspective camera
+            prior to reprojection. Defaults to the identity so that no rotation is applied. For
+            example, the extrinsic orientation of the camera (camera -> world) can be provided
+            to correct for skewed/rotated perspective projections.
+        :param img_width: Number of pixels in the x-axis for the perspective projection. Leave as
+            None and provide a height to automatically set this and keep the correct aspect ratio.
+        :param img_height: Number of pixels in the y-axis for the perspective projection. Leave as
+            None and provide a width to automatically set this and keep the correct aspect ratio.
         :returns: A max of size (height, width, 2) specifying the coordinates in the original
             for each pixel in the destination image.
         """
         perspective_mapping = self.map_perspective(
             points_or_pixels,
             img_width,
-            img_height
+            img_height,
+            rotation
         )
         perspective_img = cv2.remap(
             original_image, perspective_mapping.astype(np.float32), None,
