@@ -236,6 +236,7 @@ def show_and_save_results(calib_result: CalibrationResult,
     fig = plt.figure(figsize=figsize)
     figures.append(fig)
     ax = fig.add_subplot(1, 1, 1, projection='3d')
+    ax.view_init(roll=50, elev=-50, azim=-130)
     ax.set_title('Extrinsic Parameters')
     world_coords = generate_pattern_world_coords(
         arguments.pattern_num_rows,
