@@ -1,12 +1,13 @@
 from pyfisheye.calibration_options import CalibrationOptions
 from pyfisheye.calibration_result import CalibrationResult
 from pyfisheye.internal.utils.common import check_shapes
-from typing import Optional
+from typing import Optional, Any
 from tqdm import tqdm
 import pyfisheye.internal.optimisation as optim
 import pyfisheye.internal.utils.common as common
 import pyfisheye.internal.projection as projection
 import numpy as np
+import numpy.typing as npt
 
 __all__ = ['calibrate']
 _logger = common.get_logger()
@@ -85,7 +86,6 @@ def calibrate(pattern_observations: np.ndarray,
         raise ValueError("Expected argument 'pattern_observations' to have shape N,M,2 "
                          "where N is greater than 1 and M is equal to pattern_num_cols *"
                          " pattern_num_rows.")
-    prev_level = _logger.level
     _logger.debug("Starting calibration procedure.")
     pattern_observations = pattern_observations.astype(np.float64)
     pattern_world_coords = common.generate_pattern_world_coords(
@@ -207,7 +207,7 @@ def optimise_distortion_centre(pattern_observations: np.ndarray,
         to complete for grid sizes around 100.
     :returns: The optimal distortion centre followed by its mean reprojection error in pixels.
     """
-    potential_centres = np.stack(
+    potential_centres: npt.NDArray[Any] = np.stack(
         np.meshgrid(
             np.linspace(0, image_width, search_grid_size),
             np.linspace(0, image_height, search_grid_size)
@@ -230,9 +230,9 @@ def optimise_distortion_centre(pattern_observations: np.ndarray,
     potential_centres = potential_centres[sorted_indices]
     iterator = potential_centres
     if progress_bar:
-        iterator = tqdm(iterator, desc='Optimising image centre.')
-    optimal_distortion_centre = None
-    optimal_distortion_centre_mean_error = np.inf
+        iterator = tqdm(iterator, desc='Optimising image centre.')  # type: ignore
+    optimal_distortion_centre = potential_centres[0]
+    optimal_distortion_centre_mean_error = np.array(np.inf)
     _logger.debug(f"Searching through {len(potential_centres)} potential distortion centres.")
     # temporarily disable logging due to running calibration in a loop.
     prev_level = _logger.level
@@ -275,4 +275,4 @@ def optimise_distortion_centre(pattern_observations: np.ndarray,
     _logger.setLevel(prev_level)
     _logger.debug(f"Finished searching for distortion centre. {optimal_distortion_centre=}"
                       f" {optimal_distortion_centre_mean_error=}")
-    return optimal_distortion_centre, optimal_distortion_centre_mean_error.item()
+    return optimal_distortion_centre, float(optimal_distortion_centre_mean_error.item())

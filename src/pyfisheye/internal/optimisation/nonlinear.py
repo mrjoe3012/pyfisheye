@@ -99,19 +99,18 @@ def nonlinear_refinement(pattern_observations: np.ndarray,
         )
         residuals = (projected_pixels - pattern_observations).flatten()
         # Weighted least squares using Huber's function
-        weights: float | np.ndarray
         if prev_residuals is None:
-            weights = 1.0
+            weights = np.array(1.0)
         else:
             abs_res = np.abs(prev_residuals)
             weights = wnls_threshold / abs_res
-            weights[abs_res <= wnls_threshold] = 1.0
+            weights = np.where(abs_res <= wnls_threshold, 1.0, weights)
         prev_residuals = residuals.copy()
         if first_iteration:
             residuals[np.isnan(residuals)] = 1000
             first_iteration = False
         return weights * residuals
-    result = least_squares(
+    result = least_squares(  # type: ignore
         fun=loss,
         x0=__pack_arguments(extrinsics, intrinsics, stretch_matrix, distortion_centre),
         method='lm'

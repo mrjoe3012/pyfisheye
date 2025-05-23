@@ -7,6 +7,7 @@ from pyfisheye.calibration import (calibrate as calibrate_camera, reproject,
                                    CalibrationOptions, CalibrationResult)
 from pyfisheye.internal.utils.common import compute_image_radius
 from pyfisheye.camera import Camera
+from mpl_toolkits.mplot3d.axes3d import Axes3D  # type: ignore
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -153,6 +154,7 @@ def find_corners(images: list[str],
     else:
         status = Status()
     _logger.info(f"Found corners in {np.count_nonzero(mask)}/{len(images)} images.")
+    assert image_size is not None
     return status, np.array(all_corners), np.array(mask), image_size
 
 def show_and_save_corners(images: list[str], corners: np.ndarray, mask: np.ndarray,
@@ -235,7 +237,7 @@ def show_and_save_results(calib_result: CalibrationResult,
     # plot extrinsics
     fig = plt.figure(figsize=figsize)
     figures.append(fig)
-    ax = fig.add_subplot(1, 1, 1, projection='3d')
+    ax: Axes3D = fig.add_subplot(1, 1, 1, projection='3d')
     ax.view_init(roll=50, elev=-50, azim=-130)
     ax.set_title('Extrinsic Parameters')
     world_coords = generate_pattern_world_coords(
@@ -323,7 +325,7 @@ def show_and_save_results(calib_result: CalibrationResult,
     ax.plot(rho_samples, np.polyval(calib_result.intrinsics[::-1], rho_samples))
     figures.append(fig)
     if arguments.save_results is not None:
-        fig.savefig(os.path.join(arguments.save_results, f'polynomial.jpg'))
+        fig.savefig(os.path.join(arguments.save_results, 'polynomial.jpg'))
     _logger.info(f'Pixel error - mean={np.mean(errors):.2f} std={np.std(errors):.2f}')
     if arguments.save_results is not None:
         np.savetxt(

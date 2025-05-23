@@ -34,8 +34,8 @@ def partial_extrinsics(pattern_observations: np.ndarray,
         with the z-component set to NaN. The dimension with length 4 corresponds to the 4 possible
         solutions.
     """
-    __logger.debug(f'Computing partial extrinsics for '
-                   '{pattern_observations.shape[0]} observations.')
+    __logger.debug('Computing partial extrinsics for '
+                   f'{pattern_observations.shape[0]} observations.')
     pattern_observations = pattern_observations - distortion_centre
     # generate the (empty) result N,3,3
     result = np.tile(
@@ -490,7 +490,7 @@ def linear_refinement_intrinsics(pattern_observations: np.ndarray,
     ).flatten()
     x = np.linalg.lstsq(T, Y)[0]
     result = np.array([x[0], 0, *x[1:]])
-    __logger.debug(f"Computed linear refinement of intrinsic parameters.")
+    __logger.debug("Computed linear refinement of intrinsic parameters.")
     return result
 
 @check_shapes({

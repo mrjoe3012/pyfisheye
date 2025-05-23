@@ -209,7 +209,7 @@ class Camera:
         # use difference in FOV to set aspect ratio (if both dimensions not provided)
         if img_width is None:
             img_width = int(img_height * (horizontal_fov / vertical_fov))
-        elif img_height is None:
+        if img_height is None:
             img_height = int(img_width * (vertical_fov / horizontal_fov))
         # compute the rays coming from the perspective camera
         f_x = img_width / (2 * np.tan(horizontal_fov / 2))
@@ -274,7 +274,7 @@ class Camera:
             img_height,
             rotation
         )
-        perspective_img = cv2.remap(
+        perspective_img = cv2.remap(  # type: ignore
             original_image, perspective_mapping.astype(np.float32), None,
             interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT,
             borderValue=0
