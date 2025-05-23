@@ -281,7 +281,7 @@ def intrinsics_and_z_translation(pattern_observations: np.ndarray,
         )
         H = result.x
         if not result.success:
-            __logger.warning("Linear trust-constr optimisation failed to converge.")
+            raise RuntimeWarning("Linear trust-constr optimisation failed to converge.")
     else:
         __logger.debug("Using standard least squares solver with no monotonicity constraints.")
         H = np.linalg.lstsq(M, b)[0]
