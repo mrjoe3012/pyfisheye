@@ -239,7 +239,6 @@ class Camera:
         # provided orientation
         sample_rays = (perspective_transformation @ sample_rays).squeeze(-1)
         perspective_mapping = self.world2cam_fast(sample_rays)
-        perspective_mapping = perspective_mapping[:, ::-1, :] # TODO fix
         return perspective_mapping
 
     @check_shapes({

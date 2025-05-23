@@ -134,7 +134,7 @@ def select_best_extrinsic_solution(pattern_observations: np.ndarray,
                 extrinsics[[observation_idx], solution_idx], image_radius,
                 monotonic=False,
             )
-            if intrinsics_norm[0] < 0:
+            if intrinsics_norm[0] > 0:
                 best_solution = solution_idx
                 break
         if best_solution is None:
@@ -272,7 +272,7 @@ def intrinsics_and_z_translation(pattern_observations: np.ndarray,
             fun=lambda x: np.sum((M @ x - b) ** 2),
             x0=np.linalg.lstsq(M, b)[0].tolist(),
             method='trust-constr',
-            constraints=[LinearConstraint(csc_matrix(N), lb=0)],
+            constraints=[LinearConstraint(csc_matrix(N), ub=0)],
             options={
                 'maxiter' : 10_000,
             },
