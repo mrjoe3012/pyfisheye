@@ -395,12 +395,7 @@ def linear_refinement_extrinsics(pattern_observations: np.ndarray,
         ),
         axis=-1
     )
-    # optional: fix up the rotations. makes reprojection look worse
-    # but results in valid rotations
-    # TODO: implement intrinsic refinement and try the whole thing
-    # with and without below. if better without below then maybe
-    # just leave rotations as invalid and fix them up before nonlinear
-    # refinement
+    # fix the rotations so that they are valid
     result = result[np.arange(result.shape[0]), best_result_indices]
     for i in range(len(result)):
         from scipy.spatial.transform import Rotation

@@ -10,6 +10,10 @@ import json
 import cv2
 
 class Camera:
+    """
+    Stores the calibration parameters for a camera and provides methods for projection,
+        backprojection and more.
+    """
     @check_shapes({
         'distortion_centre' : '2',
         'intrinsics' : '5',
@@ -22,6 +26,15 @@ class Camera:
                  stretch_matrix: np.ndarray = np.eye(2, dtype=np.float64),
                  image_size_wh: Optional[np.ndarray] = None,
                  precompute_lookup_table: bool = False) -> None:
+        """
+        :param distortion_centre: 2D point in pixel coordinates for the distortion centre.
+        :param intrnisics: Array of 5 coefficients for the polynomial of degree 4, provided with
+            lowest power first.
+        :param stretch_matrix: The stretch matrix.
+        :param image_size_wh: The image size. Required only when using the fast projection method.
+        :param precompute_lookup_table: If True, the lookup table for fast projection is computed
+            immediately. Otherwise, it is only computed the first time the method is called.
+        """
         self._distortion_centre = np.array(distortion_centre)
         self._intrinsics = np.array(intrinsics)
         self._stretch_matrix = np.array(stretch_matrix)
@@ -35,6 +48,13 @@ class Camera:
         'pixels' : 'N*,2'
     })
     def cam2world(self, pixels: np.ndarray, normalise: bool = True) -> np.ndarray:
+        """
+        Backproject pixel(s) in the image to a ray in 3D space.
+        :param pixels: The array of pixels, can be any shape as long as the last dimension is of
+            length 2.
+        :param normalise: If True, all returned rays will lie on the unit sphere.
+        :returns: 3D rays eminating from the camera in the camera's coordinate system.
+        """
         return projection.backproject(
             pixels, self._intrinsics,
             self._distortion_centre,
@@ -46,6 +66,13 @@ class Camera:
         'points' : 'N*,3'
     })
     def world2cam(self, points: np.ndarray) -> np.ndarray:
+        """
+        Project 3D points/rays in the camera coordinate system onto the image plane. This method
+            requires a polynomial inversion (i.e. eigenvalue decomposition) for each provided point.
+        :param points: An array with any number of dimensions as long as the last dimension
+            has length 3.
+        :returns: Pixel coordinates for each point. NaN is returned for failed projections.
+        """
         return projection.project(
             points,
             self._intrinsics,
@@ -57,6 +84,14 @@ class Camera:
         'points' : 'N*,3'
     })
     def world2cam_fast(self, points: np.ndarray) -> np.ndarray:
+        """
+        Project 3D points / rays in the camera coordinate system onto the image plane. This method
+            uses a lookup table and linear interpolation to compute the projection. The lookup
+            table will be computed if it was not precomputed when instantiating the camera.
+        :param points: An array with any number of dimensions as long as the last dimension
+            has length 3.
+        :returns: Pixel coordinates for each point. NaN is returned for failed projections.
+        """
         if self._lookup_table is None:
             self.__compute_lookup_table()
         return projection.project_fast(
@@ -67,6 +102,9 @@ class Camera:
         )
 
     def __compute_lookup_table(self) -> None:
+        """
+        Compute the lookup table for the inverse mapping.
+        """
         if self._image_size is None:
             raise RuntimeError("'image_size_wh' must be provided to Camera.__init__"
                                 " in order to use world2cam_fast.")
@@ -76,6 +114,10 @@ class Camera:
         )
 
     def to_json(self, path: str) -> None:
+        """
+        Export the calibration parameters to a json file.
+        :param path: The path to write to.
+        """
         data = {
             'intrinsics' : self._intrinsics.tolist(),
             'distortion_centre' : self._distortion_centre.tolist(),
@@ -87,13 +129,18 @@ class Camera:
             json.dump(data, f, indent=2)
 
     @staticmethod
-    def from_json(path: str) ->  Camera:
+    def from_json(path: str, **kwargs) ->  Camera:
+        """
+        Instantiate a camera from a json file.
+        :param **kwargs: Optional overrides passed to __init__.
+        :returns: The instantiated camera.
+        """
         with open(path, 'r') as f:
             data = json.load(f)
-        kwargs = {
+        json_kwargs = {
             k : np.array(v) for k, v in data.items()
         }
-        return Camera(**kwargs)
+        return Camera(**json_kwargs, **kwargs)
 
     @check_shapes({
         'rotation' : '3,3'

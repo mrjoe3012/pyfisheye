@@ -18,6 +18,9 @@ _logger = get_logger()
 plt.rcParams['figure.max_open_warning'] = False
 
 class Arguments(Namespace):
+    """
+    Typed program arguments for the calibration script.
+    """
     images: list[str]
     pattern_num_rows: int
     pattern_num_cols: int
@@ -39,20 +42,33 @@ class Arguments(Namespace):
 
 @dataclass
 class Status:
+    """
+    Convenience for returning statuses from functions with
+        errors & messages.
+    """
     error: bool = False
     message: str = ''
 
     def handle(self) -> None:
+        """
+        Print the message and exit if there was an error.
+        """
         if self.error:
             _logger.error(self.message)
             sys.exit(1)
 
 def check_existing_file(x: str) -> str:
+    """
+    Argparse tpyechecking for a file that must exist.
+    """
     if not os.path.isfile(x):
         raise ArgumentTypeError(f"'{x}' doesn't exist or is not a file.")
     return x
 
 def check_bool(x: str) -> bool:
+    """
+    Argparse typechecking for boolean-like variables.
+    """
     x = x.lower()
     if x in ['y', 'yes', 'true', 't', '1']:
         return True
@@ -62,6 +78,9 @@ def check_bool(x: str) -> bool:
         raise ArgumentTypeError(f"Bad value for boolean option: '{x}'")
 
 def parse_args() -> Arguments:
+    """
+    :returns: Arguments parsed from CLA.
+    """
     parser = ArgumentParser()
     parser.add_argument('images', nargs='+', type=check_existing_file)
     parser.add_argument('--pattern-num-rows', '-pr', type=int, required=True)
@@ -91,6 +110,9 @@ def find_corners(images: list[str],
                  rows: int, cols: int) -> tuple[Status, np.ndarray, np.ndarray,
                                                 tuple[int, int]]:
     """
+    :param images: A list of image paths.
+    :param rows: The number of rows in the calibration pattern.
+    :param cols: The number of columns in the calibration pattern.
     :returns: The corners, mask for which images corners were found in and the image size
         (width, height).
     """    
@@ -134,7 +156,18 @@ def find_corners(images: list[str],
     return status, np.array(all_corners), np.array(mask), image_size
 
 def show_and_save_corners(images: list[str], corners: np.ndarray, mask: np.ndarray,
-                          show: bool, save: Optional[str], num_cols: int, num_rows: int) -> None:
+                          show: bool, save: Optional[str], num_cols: int) -> None:
+    """
+    Show the detected corners and save them. Each of these are only done if the corresponding
+        option is set.
+    :param images: A list of image paths.
+    :param corners: Detected 2D corners.
+    :param mask: A boolean mask indicating which of the image paths the corners were successfuly
+        loaded from.
+    :param show: Whether or not to show the corners.
+    :param save: Whether or not to save the corners (visualisation).
+    :param num_cols: The number of columns in the calibration pattern.
+    """
     if not show and save is None:
         return
     _logger.info("Showing / saving corner detection.")
@@ -175,6 +208,18 @@ def show_and_save_results(calib_result: CalibrationResult,
                           corners: np.ndarray,
                           mask: np.ndarray,
                           arguments: Arguments) -> None:
+    """
+    Show and/or save the calibration results. Whether or not they are shown or saved is controlled
+        by the corresponding variables in 'options'. The following are shown/saved:
+        - extrinsic configuration of detected calibration patterns
+        - polynomial describing the camera's distortion
+        - reprojection of the 3D pattern coordinates onto the image
+        - undistorted (perspective projection) of each of the detected calibration pattern
+    :param calib_result:
+    :param corners:
+    :param mask:
+    :param arguments:
+    """
     if not arguments.show_results and arguments.save_results is None:
         return
     _logger.info("Saving / showing results.")
@@ -290,6 +335,10 @@ def show_and_save_results(calib_result: CalibrationResult,
         plt.close(fig)
 
 def calibrate(arguments: Optional[Arguments] = None) -> None:
+    """
+    Detect corners of the calibration pattern, alibrate the camera and show / save the results.
+    :param arguments: Leave as None to parse arguments from CLA.
+    """
     if arguments is None:
         return calibrate(parse_args())
     _logger.setLevel(arguments.log_level)
@@ -305,8 +354,7 @@ def calibrate(arguments: Optional[Arguments] = None) -> None:
         valid_img_mask,
         arguments.show_corner_det,
         arguments.save_corner_det,
-        arguments.pattern_num_cols,
-        arguments.pattern_num_rows
+        arguments.pattern_num_cols
     )
     options = CalibrationOptions(
         initial_distortion_centre_x=arguments.initial_distortion_centre_x,
@@ -341,7 +389,7 @@ def calibrate(arguments: Optional[Arguments] = None) -> None:
         image_size,
     )
     camera.to_json(arguments.save_calibration_to)
+
 if __name__ == '__main__':
-    import logging
-    logging.basicConfig(level='INFO')
+    _logger.setLevel('INFO')
     calibrate()

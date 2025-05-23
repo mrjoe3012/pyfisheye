@@ -3,6 +3,31 @@ from typing import Optional
 
 @dataclass
 class CalibrationOptions:
+    """
+    Parameters for the camera calibration procedure.
+    :param initial_distortion_centre_x: Specify an initial distortion centre to use for nonlinear
+        optimisation. Leave as None to use half of the image dimensions. optimise_distortion_centre
+        is True, this value will be added to the search grid and the normal search procedure is
+        carried out.
+    :param initial_distortion_centre_y: Similar to initial_distortion_centr_x but on the vertical
+        dimension.
+    :param optimise_distortion_centre: If True perform a grid search - trying out many different
+        distortion centres - to find the best distortion centre to use in the camera model. This
+        is the slowest part of the algorithm.
+    :param distortion_centre_search_grid_size: Set the number of rows and columns in the 2D search
+        grid used in the distortion centre search. Use 10-30 for a quick calibration
+        and 100+ for a more accurate but slower (5+ minutes) calibration.
+    :param distortion_centre_search_progress_bar: If True, use tqdm to display a progress bar in
+        the terminal for the distortion centre search.
+    :param nonlinear_refinement: If True, use the LM algorithm to perform a nonlinear refinement
+        of the calibration parameters. This is recommended and takes a few seconds.
+    :param robust_wnls_threshold: The threshold to use for weighted nonlinear least squares. This
+        controls robustness to misdetected corners in the calibration pattern. See
+        Improved Wide-Angle, Fisheye and Omnidirectional Camera Calibration et al.
+    :param monotonicity_constraint_samples: The number of samples used to enforce a strictly
+        decreasing camera model polynomial during the linear optimisation. Increasing this number
+        can significantly impact the calibration time.
+    """
     initial_distortion_centre_x: Optional[float] = None
     initial_distortion_centre_y: Optional[float] = None
     optimise_distortion_centre: bool = True
