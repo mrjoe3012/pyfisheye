@@ -13,9 +13,12 @@ def compute_image_radius(image_width: int, image_height: int,
     """
     Compute the maximum L2 norm between a pixel in the image and the distortion centre
         (for normalization).
+
     :param image_height:
     :param image_width:
     :param distortion_centre: x-y distortion centre.
+    :returns: The image radius being the maximum L2 norm between any point on the image and the
+        distortion centre.
     """
     return max(
         np.linalg.norm(distortion_centre).item(),
@@ -28,6 +31,7 @@ def generate_pattern_world_coords(num_rows: int, num_cols: int,
     """
     Generate a num_rows*num_cols,3 array containing the pattern coordinates in world space
         with Z = 0. They are returned in row-major ordering starting at (0, 0, 0).
+
     :param num_rows: The number of rows in the pattern - the number of corners in one column.
     :param num_cols: The number of columns in the pattern - the number of corners in one row.
     :param pattern_tile_size_x: The width of one tile in the pattern in metres.
@@ -58,7 +62,8 @@ def generate_pattern_world_coords(num_rows: int, num_cols: int,
 
 def unnormalize_coefficients(coefficients: np.ndarray, image_radius: float) -> np.ndarray:
     """
-    Convert the coefficients provided, which work on normalized values of rho,
+    Convert the coefficients provided, which work on normalized values of rho.
+
     :param coefficients: The 5 coefficients for the omnidirectional camera model.
     :param image_radius: The image radius in pixels.
     :returns: The 5 coefficients, unnormalized.
@@ -72,6 +77,7 @@ def get_3d_transformation(extr: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     Compute the third column of the rotation matrix and return a 3x3 rotation matrix
         and 3, translation vector.
+
     :param extr: The extrinsic parameters as some ndarray with 3,3 in the last two dimensions.
     :returns: The rotation matrices and translation vectors for each of the transformations,
         shape=N*,3,3 and N*,3
@@ -93,6 +99,7 @@ def build_companion_matrix(coeffs: np.ndarray) -> np.ndarray:
     """
     Construct a companion matrix for a batch of polynomials. The eigenvalues of each matrix
         are the roots of the corresponding polynomial.
+
     :param coeffs: The coefficients in ascending order, optionally batched for multiple
         polynomials (of the same degree).
     """

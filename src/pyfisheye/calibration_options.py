@@ -5,6 +5,7 @@ from typing import Optional
 class CalibrationOptions:
     """
     Parameters for the camera calibration procedure.
+
     :param initial_distortion_centre_x: Specify an initial distortion centre to use for nonlinear
         optimisation. Leave as None to use half of the image dimensions. optimise_distortion_centre
         is True, this value will be added to the search grid and the normal search procedure is

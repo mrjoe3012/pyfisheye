@@ -67,9 +67,9 @@ def nonlinear_refinement(pattern_observations: np.ndarray,
                          stretch_matrix: np.ndarray,
                          wnls_threshold: float) -> OptimResult:
     """
-    Use LM to perform a nonlinear refinement of all calibration
-        parameters at once. Use Huber's function for robustness to
-        outliers.
+    Use LM to perform a nonlinear refinement of all calibration parameters at once.
+        Use Huber's function for robustness to outliers.
+
     :param pattern_observations:
     :param pattern_world_coords:
     :param distortion_centre:

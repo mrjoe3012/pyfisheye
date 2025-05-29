@@ -6,8 +6,9 @@ import inspect
 def check_shapes(param_names_and_rules: dict[str, str]):
     """
     A decorator for checking the shapes of input elements. 
+
     :param param_names_and_rules: A dictionary containing each parameter to be checked and the
-    corresponding rule. Only objects having 'shape' attributes are checked.
+        corresponding rule. Only objects having 'shape' attributes are checked.
     :returns: The decorator.
     """
     def decorator(fn):

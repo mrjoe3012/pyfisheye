@@ -162,6 +162,7 @@ def show_and_save_corners(images: list[str], corners: np.ndarray, mask: np.ndarr
     """
     Show the detected corners and save them. Each of these are only done if the corresponding
         option is set.
+
     :param images: A list of image paths.
     :param corners: Detected 2D corners.
     :param mask: A boolean mask indicating which of the image paths the corners were successfuly
@@ -217,6 +218,7 @@ def show_and_save_results(calib_result: CalibrationResult,
         - polynomial describing the camera's distortion
         - reprojection of the 3D pattern coordinates onto the image
         - undistorted (perspective projection) of each of the detected calibration pattern
+
     :param calib_result:
     :param corners:
     :param mask:
@@ -340,6 +342,7 @@ def show_and_save_results(calib_result: CalibrationResult,
 def calibrate(arguments: Optional[Arguments] = None) -> None:
     """
     Detect corners of the calibration pattern, alibrate the camera and show / save the results.
+
     :param arguments: Leave as None to parse arguments from CLA.
     """
     if arguments is None:

@@ -194,6 +194,7 @@ def optimise_distortion_centre(pattern_observations: np.ndarray,
     Use a basic grid search to find an optimal distortion centre. This works by performing a linear
         calibration procedure (without monotonocity constraints) for each candidate distortion centre
         and takes the one with the minimum reprojection error.
+
     :param pattern_observations: The 2D pattern coordinates in the image.
     :param pattern_world_coords: The 3D pattern coordinates in the pattern space with Z equal to 0.
     :param stretch_matrix: The stretch matrix to use. The identity can be provided for no

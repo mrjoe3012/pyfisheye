@@ -50,6 +50,7 @@ class Camera:
     def cam2world(self, pixels: np.ndarray, normalise: bool = True) -> np.ndarray:
         """
         Backproject pixel(s) in the image to a ray in 3D space.
+ 
         :param pixels: The array of pixels, can be any shape as long as the last dimension is of
             length 2.
         :param normalise: If True, all returned rays will lie on the unit sphere.
@@ -69,6 +70,7 @@ class Camera:
         """
         Project 3D points/rays in the camera coordinate system onto the image plane. This method
             requires a polynomial inversion (i.e. eigenvalue decomposition) for each provided point.
+
         :param points: An array with any number of dimensions as long as the last dimension
             has length 3.
         :returns: Pixel coordinates for each point. NaN is returned for failed projections.
@@ -88,6 +90,7 @@ class Camera:
         Project 3D points / rays in the camera coordinate system onto the image plane. This method
             uses a lookup table and linear interpolation to compute the projection. The lookup
             table will be computed if it was not precomputed when instantiating the camera.
+
         :param points: An array with any number of dimensions as long as the last dimension
             has length 3.
         :returns: Pixel coordinates for each point. NaN is returned for failed projections.
@@ -116,6 +119,7 @@ class Camera:
     def to_json(self, path: str) -> None:
         """
         Export the calibration parameters to a json file.
+
         :param path: The path to write to.
         """
         data = {
@@ -132,7 +136,8 @@ class Camera:
     def from_json(path: str, **kwargs) ->  Camera:
         """
         Instantiate a camera from a json file.
-        :param **kwargs: Optional overrides passed to __init__.
+
+        :param \*\*kwargs: Optional overrides passed to __init__.
         :returns: The instantiated camera.
         """
         with open(path, 'r') as f:
@@ -150,6 +155,8 @@ class Camera:
                         img_height: Optional[int] = None,
                         rotation: np.ndarray = np.eye(3, dtype=np.float64)) -> np.ndarray:
         """
+        Returns the map fed to cv2.remap in :func:`Camera.reproject_perspective`.
+
         :param points_or_pixels: 2D points in the image or 3D points/rays in the camera
             coordinate system. Any shape as long as the last dimension equals 2 or 3.
         :param img_width: Number of pixels in the x-axis for the perspective projection. Leave as
@@ -250,6 +257,8 @@ class Camera:
                               img_width: Optional[int] = None,
                               img_height: Optional[int] = None) -> np.ndarray:
         """
+        Reproject a region of a fisheye image to a perspective one.
+
         :param original_image: The original image to sample from. cv2.remap will be used
             to generate the perspective image with linear interpolation.
         :param points_or_pixels: 2D points in the image or 3D points/rays in the camera

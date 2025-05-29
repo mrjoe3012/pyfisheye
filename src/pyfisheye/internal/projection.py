@@ -18,6 +18,7 @@ def project(points: np.ndarray, intrinsics: np.ndarray,
     """
     Project world points to pixel coordinates. Uses batched method for computing
         polynomial roots, but is still quite slow for large numbers of points.
+
     :param pixels: The pixels to project (in image coordinates.)
     :param distortion_centre: The camera's distortion centre in pixel coordinates.
     :param scaling_matrix: The scaling matrix, leave as None to use identity.
@@ -73,6 +74,7 @@ def project_fast(points: np.ndarray,
                      scaling_matrix: Optional[np.ndarray] = None) -> np.ndarray:
     """
     Use a lookup table to perform a faster projection of 3D points onto the image space.
+
     :param points: The points to project, can be any shape as long as the last dimension
         has length 2.
     :param lookup_theta: The theta values in the lookup table in ascending order. Use
@@ -106,6 +108,7 @@ def backproject(pixels: np.ndarray, intrinsics: np.ndarray,
             normalise_rays: bool = True) -> np.ndarray:
     """
     Backproject pixels into the world-space.
+
     :param pixels: The pixels to backproject. Any shape with last dimension having length 2.
     :param distortion_centre: The distortion centre x-y in pixels.
     :param intrinsics: The intrinsic parameters / polynomial coefficients in ascending order.

@@ -25,6 +25,7 @@ def partial_extrinsics(pattern_observations: np.ndarray,
     """
     Computes four possible extrinsic configurations for each pattern observation by solving
         a system of linear homogenous equations.
+
     :param pattern_observations: Pixel coordinate pattern observations.
     :param pattern_world_coords: Pattern corner points in the pattern coordinate system (Z=0)
         for a single pattern.
@@ -94,6 +95,7 @@ def select_best_extrinsic_solution(pattern_observations: np.ndarray,
     """
     Selects the extrinsic solution in the same quadrant as its corresponding observation
         and resulting in a polynomial fit which tends to positive infinity.
+
     :param pattern_observations: Pixel coordinate pattern observations.
     :param pattern_world_coords: Pattern corner points in the pattern coordinate system (Z=0)
         for a single pattern.
@@ -305,9 +307,9 @@ def linear_refinement_extrinsics(pattern_observations: np.ndarray,
                       extrinsics: np.ndarray,
                       intrinsics: np.ndarray, image_radius: float) -> np.ndarray:
     """
-    Solves all linear equations simultanesouly
-        using the estimated intrinsic parameters to
+    Solves all linear equations simultanesouly using the estimated intrinsic parameters to
         refine the extrinsic parameters.
+
     :param distortion_centre: x-y distortion centre.
     :param pattern_observations: The pattern coordinates in image
         space centred around the initial centre of distortion (middle
@@ -421,6 +423,7 @@ def linear_refinement_intrinsics(pattern_observations: np.ndarray,
     Uses the refined extrinsics from linear_refinement_extrinsics
         to solve a linear system of equations and thus improve the
         current estimate for the intrinsic parameters.
+
     :param pattern_observations: The pattern coordinates in image
         space centred around the initial centre of distortion (middle
         of the image). Size should be (N, M, 2) where N is the number
@@ -502,6 +505,7 @@ def build_inv_lookup_table(intrinsics: np.ndarray, image_radius: np.ndarray,
     """
     Build a lookup table for the inverse polynomial f(theta) = rho. This can be used to backproject
         points more quickly.
+
     :param intrinsics: The polynomial coefficients for the model in ascending order.
     :param image_radius: The image radius in pixels.
     :param n_samples: How many discrete samples should be included in the lookup table.
