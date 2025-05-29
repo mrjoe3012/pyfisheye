@@ -178,7 +178,7 @@ class Camera:
         if points_or_pixels.shape[-1] == 2:
             rays = self.cam2world(points_or_pixels, normalise=True)
         elif points_or_pixels.shape[-1] == 3:
-            rays = points_or_pixels / np.linalg.norm(rays, axis=-1, keepdims=True)
+            rays = points_or_pixels / np.linalg.norm(points_or_pixels, axis=-1, keepdims=True)
         else:
             raise ValueError("points_or_pixels must have final dimension with length 2 (for pixels)"
             " or 3 (for points/rays)")
