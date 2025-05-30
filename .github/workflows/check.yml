@@ -26,4 +26,5 @@ jobs:
       run: |
         mypy src test
     - name: Lint (Ruff)
+      run: |
         ruff check src test
