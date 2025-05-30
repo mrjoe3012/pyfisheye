@@ -28,7 +28,7 @@ jobs:
         run: |
           pip install uv
           uv sync --group dev
-          uv run -m sphinx apidoc -o docs/source src/pyfisheye
+          uv run -m sphinx apidoc docs/source src/pyfisheye
           uv run -m sphinx build docs/source docs/build/html
       - name: Setup Pages
         uses: actions/configure-pages@v5
