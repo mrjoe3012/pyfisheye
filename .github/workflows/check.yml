@@ -21,7 +21,7 @@ jobs:
         uv sync --group dev
     - name: Run Unit Tests
       run: |
-        pytest test
+        uv run -m pytest test
     - name: Lint (MyPy)
       run: |
         mypy src test
