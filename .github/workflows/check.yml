@@ -1,0 +1,45 @@
+name: Check (Test & Lint)
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Cache uv dependencies
+      uses: actions/cache@v4
+      with:
+        path: uv-cache
+        key: ${{ runner.os }}-uv-${{ hashFiles('pyproject.toml', 'uv.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-uv-
+    - name: Cache mypy_cache
+      uses: actions/cache@v4
+      with:
+        path: .mypy_cache
+        key: ${{ runner.os }}-mypy-cache
+        restore-keys: |
+          ${{ runner.os }}-mypy-cache
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install uv
+        uv sync --group dev --cache-dir uv-cache
+    - name: Run Unit Tests
+      run: |
+        uv run -m pytest test
+    - name: Lint (MyPy)
+      run: |
+        uv run -m mypy src test
+    - name: Lint (Ruff)
+      run: |
+        uv run -m ruff check src test
