@@ -28,6 +28,8 @@ jobs:
         run: |
           pip install uv
           uv sync --group dev
+      - name: Build Docs
+        run: |
           uv run -m sphinx apidoc docs/source src/pyfisheye
           uv run -m sphinx build docs/source docs/build/html
       - name: Setup Pages
