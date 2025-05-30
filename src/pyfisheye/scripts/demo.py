@@ -84,7 +84,7 @@ def run_calibration(index: int) -> None:
         grid_size = int(grid_size_str)
         if grid_size <= 0:
             raise ValueError()
-    except:
+    except ValueError:
         print("Error: Invalid grid size.")
         sys.exit(1)
     rows, cols, width, height = dataset_pattern_size[index]
