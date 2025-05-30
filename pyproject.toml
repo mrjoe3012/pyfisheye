@@ -1,6 +1,6 @@
 [project]
 name = "pyfisheye"
-version = "0.1.0"
+version = "1.0.0"
 description = "A Python / NumPy implementation of the omnidirectional camera model proposed by Scaramuzza et al."
 readme = "README.md"
 authors = [
