@@ -21,7 +21,7 @@ Installation:
 
 Downloading the demo data:
 
-Visit the link above and download the GitHub repository as a ZIP file. Extract it into your working directory before running the demo.
+Visit the link above and download the GitHub repository as a ZIP file. Move it into your working directory before running the demo.
 
 Running the demo script:
 
