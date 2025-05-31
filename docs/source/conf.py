@@ -9,7 +9,8 @@
 project = 'pyfisheye'
 copyright = '2025, Joseph Agrane'
 author = 'Joseph Agrane'
-release = '0.1.0'
+import pyfisheye
+release = pyfisheye.__version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
