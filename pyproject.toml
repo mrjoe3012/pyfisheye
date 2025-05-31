@@ -1,12 +1,12 @@
 [project]
 name = "pyfisheye"
-version = "1.0.0"
+version = "1.0.1"
 description = "A Python / NumPy implementation of the omnidirectional camera model proposed by Scaramuzza et al."
 readme = "README.md"
 authors = [
     { name = "Joseph Agrane", email = "josephagrane@gmail.com" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE.md"]
 dependencies = [
